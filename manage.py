@@ -23,7 +23,7 @@ from donkeycar.parts.controller import LocalWebController, JoystickController, W
 # from donkeycar.utils import *
 from tools import *
 from donkeycar.parts.camera import CSICamera
-from ai_drive_models import LinearModel, DriveClass, RNNModel, LinearResModel
+from ai_drive_models import LinearModel, DriveClass, RNNModel, LinearResModel, Squeezenet
             
 def drive(cfg, model_path=None, use_joystick=False, use_trt = False, use_half = False, model_type=None):
 
@@ -45,6 +45,7 @@ def drive(cfg, model_path=None, use_joystick=False, use_trt = False, use_half = 
     # -------------------------------- 
     # 3. Add gamepad or webpage controller
     # --------------------------------
+    '''
     if model_path:
         cfg.WEB_INIT_MODE = "local"
     if use_joystick or cfg.USE_JOYSTICK_AS_DEFAULT:
@@ -62,8 +63,92 @@ def drive(cfg, model_path=None, use_joystick=False, use_trt = False, use_half = 
           outputs=['user/angle', 'user/throttle', 'user/mode', 'recording'],
           threaded=True)
     V = add_basic_modules(V, cfg) # e.g., record tracker
+    '''
+##########################################################################################################################    
     
+    if model_path:
+        cfg.WEB_INIT_MODE = "local"
+        
+    '''    25.2.
+    if use_joystick or cfg.USE_JOYSTICK_AS_DEFAULT:
+        from donkeycar.parts.controller import get_js_controller
+        ctr = get_js_controller(cfg)
+        V.add(ctr, 
+          inputs=['cam/image_array'],
+          outputs=['user/angle', 'user/throttle', 'user/mode', 'recording'],
+          threaded=True)
+    else:
+        # This web controller will create a web server that is capable of managing steering, throttle, and modes, and more.
+        ctr = LocalWebController(port=cfg.WEB_CONTROL_PORT, mode=cfg.WEB_INIT_MODE)
+        V.add(ctr,
+          inputs=['cam/image_array', 'tub/num_records'],
+          outputs=['user/angle', 'user/throttle', 'user/mode', 'recording'],
+          threaded=True)
+    V = add_basic_modules(V, cfg) # e.g., record tracker
+    '''
+    
+    if use_joystick or cfg.USE_JOYSTICK_AS_DEFAULT:
+        #modify max_throttle closer to 1.0 to have more power
+        #modify steering_scale lower than 1.0 to have less responsive steering
+        if cfg.CONTROLLER_TYPE == "MM1":
+            from donkeycar.parts.robohat import RoboHATController            
+            ctr = RoboHATController(cfg)
+        elif "custom" == cfg.CONTROLLER_TYPE:
+            #
+            # custom controller created with `donkey createjs` command
+            #
+            from my_joystick import MyJoystickController
+            ctr = MyJoystickController(
+                throttle_dir=cfg.JOYSTICK_THROTTLE_DIR,
+                throttle_scale=cfg.JOYSTICK_MAX_THROTTLE,
+                steering_scale=cfg.JOYSTICK_STEERING_SCALE,
+                auto_record_on_throttle=cfg.AUTO_RECORD_ON_THROTTLE)
+            ctr.set_deadzone(cfg.JOYSTICK_DEADZONE)
+        else:
+            from donkeycar.parts.controller import get_js_controller
 
+            ctr = get_js_controller(cfg)
+
+            if cfg.USE_NETWORKED_JS:
+                from donkeycar.parts.controller import JoyStickSub
+                netwkJs = JoyStickSub(cfg.NETWORK_JS_SERVER_IP)
+                V.add(netwkJs, threaded=True)
+                ctr.js = netwkJs
+        
+        V.add(ctr, 
+          inputs=['cam/image_array'],
+          outputs=['user/angle', 'user/throttle', 'user/mode', 'recording'],
+          threaded=True)
+
+    else:
+        #This web controller will create a web server that is capable
+        #of managing steering, throttle, and modes, and more.
+        ctr = LocalWebController(port=cfg.WEB_CONTROL_PORT, mode=cfg.WEB_INIT_MODE)
+        
+        V.add(ctr,
+          inputs=['cam/image_array', 'tub/num_records'],
+          outputs=['user/angle', 'user/throttle', 'user/mode', 'recording'],
+          threaded=True)
+
+    #this throttle filter will allow one tap back for esc reverse
+    th_filter = ThrottleFilter()
+    V.add(th_filter, inputs=['user/throttle'], outputs=['user/throttle'])
+
+    '''
+    #See if we should even run the pilot module.
+    #This is only needed because the part run_condition only accepts boolean
+    class PilotCondition:
+        def run(self, mode):
+            if mode == 'user':
+                return False
+            else:
+                return True
+
+    V.add(PilotCondition(), inputs=['user/mode'], outputs=['run_pilot'])
+    '''
+    
+    V = add_basic_modules(V, cfg) # e.g., record tracker #joe
+####################################################################################
     # -------------------------------- 
     # 4. Configure the AI neural network model
     # --------------------------------
@@ -78,6 +163,8 @@ def drive(cfg, model_path=None, use_joystick=False, use_trt = False, use_half = 
                 drive_model = LinearModel().to(device)
             elif model_type == 'resnet18':
                 drive_model = LinearResModel().to(device)
+            elif model_type == 'squeez':
+                drive_model = Squeezenet().to(device)
             elif model_type == 'rnn':
                 drive_model = RNNModel().to(device)
             drive_model.load_state_dict(torch.load(model_path,map_location=lambda storage, loc: storage))
