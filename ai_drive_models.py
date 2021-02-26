@@ -4,7 +4,7 @@ import torchvision
 from PIL import Image
 import torch.nn as nn
 import cv2
-from torchvision.models import resnet18
+from torchvision.models import resnet18, squeezenet1_1
 import numpy as np
 from torchvision import transforms
 
@@ -42,7 +42,7 @@ class DriveClass:
             if img_arr is None:
                 continue
             
-            if self.model_type == 'linear' or self.model_type == 'resnet18':
+            if self.model_type == 'linear' or self.model_type == 'resnet18' or self.model_type == 'squeez':
                 # print(img_arr.shape) # 224, 224, 3
                 img_arr = Image.fromarray(img_arr)
                 if self.half:
@@ -72,7 +72,7 @@ class DriveClass:
             self.run_throttle = run_throttle
             
     def run(self, img_arr):
-        if self.model_type == 'linear' or self.model_type == 'resnet18':
+        if self.model_type == 'linear' or self.model_type == 'resnet18' or self.model_type == 'squeez':
             # print(img_arr.shape) # 224, 224, 3
             img_arr = Image.fromarray(img_arr)
             if self.half:
@@ -174,6 +174,33 @@ class LinearResModel(nn.Module):
         throttle = self.layer_throttle(x)
 
         return steering[:,0], throttle[:,0]
+
+# Josef
+class Squeezenet(nn.Module):
+    def __init__(self):
+        super(Squeezenet, self).__init__()
+        #torchvision.models.squeezenet1_1(pretrained=False, progress=True, **kwargs)
+        self.squeez = squeezenet1_1(pretrained=False)
+        self.squeez.classifier[1] = nn.Conv2d(512,512, kernel_size=(1,1), stride=(1,1))
+        self.layer_steering = nn.Sequential(
+                            nn.Linear(512, 256), nn.BatchNorm1d(256), nn.ReLU(True),
+                            nn.Linear(256, 128), nn.BatchNorm1d(128), nn.ReLU(True),
+                            nn.Linear(128, 1)
+        )
+
+        self.layer_throttle = nn.Sequential(
+                            nn.Linear(512, 256), nn.BatchNorm1d(256), nn.ReLU(True),
+                            nn.Linear(256, 128), nn.BatchNorm1d(128), nn.ReLU(True),
+                            nn.Linear(128, 1)
+        )                    
+
+    def forward(self, rgb):
+        x = self.squeez(rgb)
+
+        steering = self.layer_steering(x)
+        throttle = self.layer_throttle(x)
+
+        return steering[:,0], throttle[:,0]  
 
 
 class RNNModel(nn.Module):
