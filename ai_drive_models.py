@@ -149,6 +149,7 @@ class DriveClass:
 #         return steering[:,0], throttle[:,0]
 
 #Modified Linear Model Josef
+#Test change
 class LinearModel(nn.Module):
     def __init__(self):
         super(LinearModel, self).__init__()
