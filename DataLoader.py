@@ -34,6 +34,7 @@ class SelfDriveDataset(Dataset):
         if self.transform is not None: # add noise to the dataset...just for training... 
             rgb = self.transform(rgb)
         rgb = transforms.ToTensor()(rgb)
+        #rgb /=255.0
         # TODO add transforms later...
 
 
@@ -50,8 +51,15 @@ def load_split_train_valid(cfg, collate_records_dict_dict, num_workers=2):
 
     batch_size = cfg.BATCH_SIZE
     if cfg.COLOR_JITTER_TRANSFORMS:
-        train_transforms = transforms.Compose([transforms.ColorJitter(brightness=0.5, contrast=0.3, saturation=0.3, hue=0.3)])  # add image noise later...
-        print('using COLOR_JITTER_TRANSFORMS during training...')
+        train_transforms = transforms.Compose([
+            transforms.ColorJitter(brightness=0.5, contrast=0.3, saturation=0.3, hue=0.3),
+            #transforms.Pad(23, fill=0, padding_mode='reflect'),
+            #transforms.RandomAffine(1, translate=(0,.1), scale=None, shear=None, resample=0, fillcolor=0),
+            #transforms.GaussianBlur(5, sigma=(0.1, 2.0)),
+            #transforms.Pad(-23, fill=0, padding_mode='reflect'),
+            ])  # add image noise later...
+                              
+        print('using COLOR_JITTER_TRANSFORMS and Normalize during training...')
     else:
         train_transforms = None
 
