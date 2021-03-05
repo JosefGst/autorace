@@ -173,16 +173,14 @@ class LinearModel(nn.Module):
         )
         self.avgpool = nn.AdaptiveAvgPool2d((1, 1)) # pooling, change the size to batch_size*512*1*1
 
-        self.layer_steering = nn.Sequential(
-                            nn.Linear(64*2*33, 100), nn.BatchNorm1d(100), nn.ELU(True), nn.Dropout(p=0.4),
-                            nn.Linear(100, 50), nn.BatchNorm1d(50), nn.ELU(True),
+        self.layer_steering = nn.Sequential(                  
+                            nn.Linear(64, 50), nn.BatchNorm1d(50), nn.ELU(True), nn.Dropout(p=0.4),
                             nn.Linear(50, 10), nn.BatchNorm1d(10), nn.ELU(True),
                             nn.Linear(10, 1)
         )
 
         self.layer_throttle = nn.Sequential(
-                            nn.Linear(64*1*18, 100), nn.BatchNorm1d(100), nn.ELU(True), nn.Dropout(p=0.4),
-                            nn.Linear(100, 50), nn.BatchNorm1d(50), nn.ELU(True),
+                            nn.Linear(64, 50), nn.BatchNorm1d(50), nn.ELU(True), nn.Dropout(p=0.4),
                             nn.Linear(50, 10), nn.BatchNorm1d(10), nn.ELU(True),
                             nn.Linear(10, 1)
         )
