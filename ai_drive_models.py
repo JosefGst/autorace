@@ -188,6 +188,7 @@ class LinearModel(nn.Module):
         )
 
     def forward(self, rgb):
+        x = x.view(x.size(0), 3, 60, 224) #Josef
         x = self.layer_cnn(rgb) # batch, 512, 7,7
         #x = self.avgpool(x) # batch, 512, 1, 1
         x = x.view(x.size(0), -1)
