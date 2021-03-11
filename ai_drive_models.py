@@ -169,7 +169,7 @@ class LinearModel(nn.Module):
             nn.Conv2d(in_channels= 64, out_channels= 64, kernel_size=3, stride=1, padding=1), #14-->7, final size: batch_size*512*7*7
             nn.BatchNorm2d(64),
             nn.ELU(inplace=True),
-            nn.Dropout(p=0.5)
+            nn.Dropout(p=0.25)
         )
         self.avgpool = nn.AdaptiveAvgPool2d((1, 1)) # pooling, change the size to batch_size*512*1*1
 
