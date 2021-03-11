@@ -169,30 +169,28 @@ class LinearModel(nn.Module):
             nn.Conv2d(in_channels= 64, out_channels= 64, kernel_size=3, stride=1, padding=1), #14-->7, final size: batch_size*512*7*7
             nn.BatchNorm2d(64),
             nn.ELU(inplace=True),
-            nn.Dropout(p=0.25)
+            nn.Dropout(p=0.5)
         )
         self.avgpool = nn.AdaptiveAvgPool2d((1, 1)) # pooling, change the size to batch_size*512*1*1
 
         self.layer_steering = nn.Sequential(
-                            nn.Linear(64*2*33, 100), nn.BatchNorm1d(100), nn.ELU(True), nn.Dropout(p=0.4),
-                            nn.Linear(100, 50), nn.BatchNorm1d(50), nn.ELU(True),
-                            nn.Linear(50, 10), nn.BatchNorm1d(10), nn.ELU(True),
+                            # nn.Linear(64*1*18, 100), nn.BatchNorm1d(100), nn.ELU(True), nn.Dropout(p=0.4),
+                            nn.Linear(64, 32), nn.BatchNorm1d(32), nn.ELU(True),
+                            nn.Linear(32, 10), nn.BatchNorm1d(10), nn.ELU(True),
                             nn.Linear(10, 1)
         )
 
         self.layer_throttle = nn.Sequential(
-                            nn.Linear(64*2*33, 100), nn.BatchNorm1d(100), nn.ELU(True), nn.Dropout(p=0.4),
-                            nn.Linear(100, 50), nn.BatchNorm1d(50), nn.ELU(True),
-                            nn.Linear(50, 10), nn.BatchNorm1d(10), nn.ELU(True),
+                            # nn.Linear(64*1*18, 100), nn.BatchNorm1d(100), nn.ELU(True), nn.Dropout(p=0.4),
+                            nn.Linear(64, 32), nn.BatchNorm1d(32), nn.ELU(True),
+                            nn.Linear(32, 10), nn.BatchNorm1d(10), nn.ELU(True),
                             nn.Linear(10, 1)
         )
 
     def forward(self, rgb):
-        x = x.view(x.size(0), 3, 60, 224) #Josef
         x = self.layer_cnn(rgb) # batch, 512, 7,7
-        #x = self.avgpool(x) # batch, 512, 1, 1
-        x = x.view(x.size(0), -1)
-        #x = torch.flatten(x, start_dim=1) # flatten to size of: batch_size*512
+        x = self.avgpool(x) # batch, 512, 1, 1
+        x = torch.flatten(x, start_dim=1) # flatten to size of: batch_size*512
 
         steering = self.layer_steering(x)
         throttle = self.layer_throttle(x)
